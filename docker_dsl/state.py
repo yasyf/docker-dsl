@@ -31,6 +31,15 @@ current_graph: ContextVar[StageGraph | None] = ContextVar("current_graph", defau
 
 
 def current_stage() -> Stage | None:
+    """Return the stage of the innermost open `with Stage(...)` block.
+
+    Use it inside a reusable helper that operates on whichever stage is active,
+    so callers need not pass the stage explicitly. Returns `None` outside any
+    stage block, including during the discovery pass.
+
+    Returns:
+        The active stage, or `None` when no stage block is open.
+    """
     if (graph := current_graph.get()) is not None:
         return graph.active
     return None

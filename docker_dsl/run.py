@@ -19,6 +19,16 @@ class ShellCommand:
 
 @dataclass
 class RedirectableCmd:
+    """A pending `echo` awaiting a redirect target.
+
+    Returned by `RunBuilder.echo`. Apply `>>` to append to a file or `>` to
+    truncate it, with the path on the right. The echoed text is quoted for you.
+
+    Example:
+        >>> r.echo("pillow>=11") >> "/root/overrides.txt"   # append
+        >>> r.echo("numpy<3") > "/etc/pip/constraint.txt"    # truncate
+    """
+
     builder: RunBuilder
     text: str
 
@@ -36,6 +46,18 @@ class RedirectableCmd:
 
 @dataclass
 class CmdInvoker:
+    """A bound shell binary, produced by `RunBuilder`'s attribute dispatch.
+
+    Accessing `r.<name>` yields one of these for `<name>`; calling it appends
+    the command. Positional arguments pass through verbatim. Keyword arguments
+    become flags: `depth="1"` adds `--depth 1`, `verbose=True` adds `--verbose`,
+    and a `False` value is dropped. Underscores in names become hyphens.
+
+    Example:
+        >>> r.git("clone", url, depth="1", recurse_submodules=True)
+        ... # git clone <url> --depth 1 --recurse-submodules
+    """
+
     builder: RunBuilder
     binary: str
 
@@ -55,6 +77,18 @@ class CmdInvoker:
 
 @dataclass
 class CdScope:
+    """A `cd` that optionally restores the previous directory.
+
+    Returned by `RunBuilder.cd`. As a bare statement it just changes directory.
+    As a `with` block it appends `cd -` on exit, so later commands resume where
+    they were.
+
+    Example:
+        >>> with r.cd("/src/build"):
+        ...     r.make("install")
+        ... # cd /src/build && make install && cd -
+    """
+
     builder: RunBuilder
     path: str
 
