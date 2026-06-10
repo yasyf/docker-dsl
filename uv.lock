@@ -345,6 +345,7 @@ dependencies = [
 
 [package.optional-dependencies]
 dev = [
+    { name = "anyio" },
     { name = "inline-snapshot" },
     { name = "pytest" },
     { name = "ruff" },
@@ -359,6 +360,7 @@ docs = [
 
 [package.metadata]
 requires-dist = [
+    { name = "anyio", marker = "extra == 'dev'", specifier = ">=4" },
     { name = "executing", specifier = ">=2.0" },
     { name = "inline-snapshot", marker = "extra == 'dev'", specifier = ">=0.17" },
     { name = "pydantic", specifier = ">=2.0" },

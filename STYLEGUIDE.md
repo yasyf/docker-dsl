@@ -22,6 +22,9 @@ The concrete style rules for `docker_dsl/`. Target Python 3.13+.
    then the module. If surrounding code violates this guide, fix it.
 8. **Flat over nested.** Early returns and flat control flow. Nesting deeper than
    three levels is a smell.
+9. **Async-native I/O.** Anything that touches I/O is `async def`, backed by a
+   library with a native async API (e.g. `aiosqlite`) — never a blocking call
+   wrapped in `asyncio.to_thread`. See § Async.
 
 ## Functional Style
 
@@ -196,6 +199,35 @@ Types reflect user concepts, not implementation internals. A public signature bu
 from internal metadata types leaks the implementation; expose the objects users
 think in.
 
+## Async
+
+I/O is async from day 1. Anything that hits the network, filesystem, or a database is
+an `async def`, and the library doing it has a native async API. Reach for the
+async-native driver instead of wrapping a blocking one in `asyncio.to_thread` — the
+wrapper leaks a sync boundary into every caller and caps throughput at the thread pool.
+Keep `to_thread` / `run_in_executor` for libraries with no async equivalent. Run
+concurrent work through `anyio` `TaskGroup`s rather than juggling bare `asyncio.gather`.
+
+```python
+# Good — async-native driver
+import aiosqlite
+
+async def load(db_path: str, key: str) -> Row | None:
+    async with aiosqlite.connect(db_path) as db:
+        async with db.execute("select * from t where k = ?", (key,)) as cur:
+            return await cur.fetchone()
+
+# Bad — blocking driver shoved onto a thread
+import asyncio
+import sqlite3
+
+async def load(db_path: str, key: str) -> Row | None:
+    def _q() -> Row | None:
+        with sqlite3.connect(db_path) as db:
+            return db.execute("select * from t where k = ?", (key,)).fetchone()
+    return await asyncio.to_thread(_q)
+```
+
 ## Error Handling
 
 Keep `try` blocks minimal. Only the line that can throw belongs inside.
@@ -233,9 +265,23 @@ class JobSpec:
     def matches(self, job: Job) -> bool: ...
 ```
 
-No leading underscores on classes, constants, or module-level helpers. Use
-`__all__` for export control. Reserve a leading underscore for a private instance
-attribute.
+No leading underscores on classes, constants, or module-level helpers. Reserve a
+leading underscore for a private instance attribute.
+
+`__init__.py` exposes only the public API surface, re-exported with plain regular
+imports. No redundant `as` aliases, no `__all__`: name a symbol here to make it
+public, omit it to keep it internal. F401 stays active in every other module, so
+unused imports outside `__init__.py` are still deleted.
+
+```python
+# Good — public API, plain re-export
+from docker_dsl.matcher import Matcher
+from docker_dsl.runner import Runner
+
+# Bad — redundant-alias / __all__ ceremony
+from docker_dsl.matcher import Matcher as Matcher
+__all__ = ["Matcher", "Runner"]
+```
 
 Frozen dataclasses for immutable and config data. Every mutable default needs a
 factory such as `field(default_factory=list)`; a bare `[]` or `{}` is a bug.

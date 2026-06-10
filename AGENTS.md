@@ -43,13 +43,14 @@ Editing the plan first robs the user of the choice and forces them to diff the p
 
 ## Parallelize Independent Work
 
-Independent tasks dispatch concurrently. Two agents that could run at the same time must run at the same time; the orchestrator only routes, never executes. Pick the surface by who holds the plan:
+Sequential is the exception, not the default. Two steps that don't consume each other's output run at the same time; when unsure whether they're independent, assume they are and fan out. The orchestrator routes and synthesizes — it never executes work a subagent could. Pick the surface by scale:
 
-- **Dynamic workflow** — default for substantive multi-step work: the script holds the loop, branching, and intermediate results.
-- **Parallel subagent calls in one message** — ad-hoc independent investigations. One message, N `Agent` tool uses, results gathered in parallel.
+- **Batch tool calls in one message** — the cheapest parallelism and the most missed. Independent reads, greps, globs, and read-only Bash go in a *single* message, never one per turn.
+- **Parallel subagent calls in one message** — ad-hoc independent investigations: "explore X while I check Y", multi-file reviews, independent edits. One message, N `Agent` tool uses, results gathered in parallel.
+- **Dynamic workflow** — substantive multi-step work; the script holds the loop, branching, and intermediate results.
 - **Named team** — long-running peers needing agent-to-agent handoffs mid-run, via `TeamCreate`.
 
-Single-step exception: one task, no parallel sibling, no follow-on → one subagent call is fine.
+Single-step exception: one task, no parallel sibling, no follow-on → act directly.
 
 ## Writing Plans
 
@@ -87,6 +88,8 @@ Target Python 3.13+. Run `uv sync --extra dev`, `uv run pytest`, and `uv build`.
 
 **Docstrings on the public API only.** User-facing surfaces carry Google-style docstrings; they render into the docs site via Great Docs. Internal helpers get none. No comments except TODOs, non-obvious workarounds, or disabled code.
 
+**Async-native from day 1.** Anything that touches I/O is `async def`, backed by a library with a native async API (e.g. `aiosqlite`) rather than a blocking call wrapped in `asyncio.to_thread`. Concurrency and tests run through `anyio`. See STYLEGUIDE.md § Async.
+
 @STYLEGUIDE.md
 
 ## General Rules
@@ -115,12 +118,14 @@ Target Python 3.13+. Run `uv sync --extra dev`, `uv run pytest`, and `uv build`.
 
 **Don't contort code to satisfy a checker.** The type checker and linter serve the code, not the other way around. Don't reshape a data model, widen a type, or bolt on a `cast(...)` / narrowing-only `assert isinstance(...)` / blanket ignore just to silence a diagnostic. If a clean fix isn't obvious, leave the diagnostic — a visible diagnostic is preferable to scar tissue. (Most checker noise isn't worth acting on at all; act only when it flags a real bug.)
 
-**Mechanical linting.** CI and hooks handle formatting and import order. Leave `ruff` to them and fix only what needs human judgment. When reviewing code, don't flag mechanical lint violations (line length, whitespace, import order, trailing commas).
+**Mechanical linting.** The pre-commit hook (prek + ruff) auto-formats and fixes import order on every `git commit` — run `uvx prek install` once to activate it. Leave `ruff` to the hook and fix only what needs human judgment; clean everything up-front with `uvx prek run --all-files` if you want. When reviewing code, don't flag mechanical lint violations (line length, whitespace, import order, trailing commas).
 
 **Testing.** The suite lives in `tests/`; run it with `uv run pytest`. Use strict assertions and mock external dependencies while leaving the code under test real. Databases and other stateful services are not mock boundaries — when a test needs one, run a real ephemeral instance via `testcontainers` instead of mocking the driver.
+
+**Writing docs.** When writing or revising docs, a README, a tutorial, a how-to, or reference, use the `writing-docs` skill (Diataxis modes, voice rules, and runnable code-sample rules) and run `slop-cop check <file> --markdown=on` before you finish.
 
 **Docs.** Any public API change must keep `uv run great-docs build` green; run `uv sync --group docs` first.
 
 **Git.** Commits should be atomic and scoped. One logical change per commit.
 
-**Releases.** Tagging `v*` triggers `.github/workflows/release-pypi.yml`, which builds, publishes to PyPI via trusted publishing, and cuts a GitHub release. The version comes from the tag.
+**Releases.** Tagging `v*` triggers `.github/workflows/release-pypi.yml`, which builds, publishes to PyPI via trusted publishing, and cuts a GitHub release. The version comes from the tag. The release refuses to run unless the tagged commit is on `main` — tag a merged commit (e.g. `git tag vX.Y.Z origin/main`), not a feature branch.
