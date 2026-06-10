@@ -1,0 +1,49 @@
+---
+title: Smart apt
+---
+
+Install apt packages without writing `apt-get update` by hand. The run builder
+inserts an update before the first install and again whenever you add a source
+that changes the package lists.
+
+## Install packages, a PPA, and a third-party repo
+
+<!-- gd-embed: apt_smart.py -->
+
+Render it with `--with_intel=true`:
+
+```dockerfile
+# syntax=docker/dockerfile:1
+FROM ubuntu:24.04 AS base
+WORKDIR /root
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked --mount=type=cache,target=/var/lib/apt,sharing=locked \
+  apt-get update -y \
+  && apt-get install -y --no-install-recommends software-properties-common \
+  && add-apt-repository ppa:apt-fast/stable -y \
+  && apt-get update -y \
+  && apt-fast install -y --no-install-recommends apt-fast curl wget git \
+  && wget -O- https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB | gpg --dearmor | tee /usr/share/keyrings/oneapi-archive-keyring.gpg > /dev/null \
+  && echo "deb [signed-by=/usr/share/keyrings/oneapi-archive-keyring.gpg] https://apt.repos.intel.com/oneapi all main" | tee /etc/apt/sources.list.d/oneapi-archive-keyring.list \
+  && apt-get update -y \
+  && apt-fast install -y --no-install-recommends intel-oneapi-mkl-devel \
+  && rm -rf /tmp/*
+```
+
+## When the update runs
+
+An `apt-get update -y` appears before the first `apt_install`. `add_apt_ppa` and
+`add_apt_repo` mark the package lists stale, so the next `apt_install` runs
+another update. The output above has two updates, one before the first install
+and one after the PPA. You never write the update yourself, and it never repeats
+needlessly.
+
+## The apt helpers
+
+- `r.apt_install(*packages, fast=False)` installs packages. Pass `fast=True` to
+  use `apt-fast` once it is installed.
+- `r.add_apt_ppa(ppa)` adds a PPA.
+- `r.add_apt_repo(key_url, repo_url, name=...)` adds a third-party repo, fetches
+  its GPG key, and writes a `signed-by` source list.
+
+Cache the apt directories with `lock=True` (as above) so package downloads
+persist between builds without two builds corrupting the same cache.

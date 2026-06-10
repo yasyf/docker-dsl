@@ -1,0 +1,52 @@
+---
+title: Write your first recipe
+---
+
+By the end of this page you have a recipe module and a Dockerfile rendered from
+it. The recipe greets a build argument and prints it at runtime.
+
+## Write the recipe
+
+Create `minimal.py`:
+
+<!-- gd-embed: minimal.py -->
+
+Three things happen in that file:
+
+- `ctx.register("tag", str)` declares a config field named `tag`. Every
+  registered field is required when you render.
+- `with Stage("ubuntu:24.04") as s:` opens a stage. Each method call inside the
+  block adds one instruction to it.
+- `s.arg(..., env=True)` writes both an `ARG` and an `ENV`, so the value is
+  available at build time and runtime.
+
+## Render it
+
+Run the recipe through the CLI, passing the `tag` field:
+
+```bash
+uvx docker-dsl minimal --tag=v1.0.0 --out Dockerfile
+```
+
+`Dockerfile` now holds:
+
+```dockerfile
+# syntax=docker/dockerfile:1
+FROM ubuntu:24.04 AS base
+ARG APP_TAG=v1.0.0
+ENV APP_TAG=${APP_TAG}
+WORKDIR /app
+RUN echo "hello from docker-dsl" > /app/greeting.txt
+CMD ["cat", "/app/greeting.txt"]
+```
+
+Omit `--out` to print to stdout instead. Change `--tag` and render again to get a
+different Dockerfile from the same recipe.
+
+## Where to go next
+
+- [Render from the CLI](../guide/render-from-the-cli.qmd) covers every render
+  option, plus rendering from Python.
+- [The run builder](../guide/run-builder.qmd) composes a multi-command `RUN`.
+- [Multi-stage builds](../guide/multi-stage-builds.qmd) copies artifacts between
+  stages.

@@ -1,0 +1,19 @@
+---
+title: Getting Started
+---
+
+docker-dsl turns a Python module into a Dockerfile. You write stages and
+commands with `with` blocks and method calls, then render the module to text,
+once per configuration. One recipe produces every variant you need.
+
+## Prerequisites
+
+- Python 3.13 or newer
+- [uv](https://docs.astral.sh/uv/) (for the `uvx docker-dsl` command)
+
+## Next step
+
+[Write your first recipe](your-first-recipe.qmd) takes you from an empty file to
+a rendered Dockerfile in a few minutes. From there, the [Guide](../guide/) covers
+each task (multi-stage builds, BuildKit mounts, apt, and the run builder), and
+the [Reference](../reference/) documents every public symbol.

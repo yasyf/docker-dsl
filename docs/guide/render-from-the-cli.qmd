@@ -1,0 +1,41 @@
+---
+title: Render from the CLI
+---
+
+Render a recipe from the command line, or call into the same API from Python.
+
+## Render with the CLI
+
+Point the CLI at the recipe's import path and pass one `--<field>` per registered
+config field:
+
+```bash
+uvx docker-dsl minimal --tag=v1.0.0 --out Dockerfile
+```
+
+- The CLI builds its arguments from the fields the recipe registered, so the
+  `--<field>` flags differ per recipe.
+- `--out PATH` writes the Dockerfile. Omit it to print to stdout.
+- Boolean fields accept `true`/`false`/`1`/`0`/`yes`/`no`, as in
+  `--release=true`.
+- A missing or wrong-typed field fails with a pydantic message naming it.
+
+`python -m docker_dsl minimal --tag=v1.0.0` is equivalent. Use it when the
+package is already on the path.
+
+## Render from Python
+
+`Dockerfile(module).render(**config)` returns the text and, given `path=`, writes
+it:
+
+```python
+import importlib
+from docker_dsl import Dockerfile
+
+recipe = importlib.import_module("multi_stage")
+release = Dockerfile(recipe).render(release=True)
+staging = Dockerfile(recipe).render(release=False, path="Dockerfile.staging")
+```
+
+Each `render` call re-runs the recipe with its own config, so one module produces
+every variant. See [`Dockerfile.render`](../reference/) for the full signature.

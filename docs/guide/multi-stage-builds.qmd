@@ -1,0 +1,56 @@
+---
+title: Multi-stage builds
+---
+
+Build an artifact in one stage and copy it into a smaller final image, so the
+shipped image carries no compiler or build cache.
+
+## Two stages and a copy
+
+This recipe compiles a Go binary, then copies it into a distroless image:
+
+<!-- gd-embed: multi_stage.py -->
+
+Render it with `--release=true`:
+
+```dockerfile
+# syntax=docker/dockerfile:1
+FROM golang:1.23 AS base
+WORKDIR /src
+COPY . .
+RUN --mount=type=cache,target=/root/.cache/go-build,sharing=shared \
+  go build -o /bin/server ./cmd/server
+
+FROM gcr.io/distroless/base-debian12 AS release
+COPY --from=base --link /bin/server /bin/server
+ENV GO_ENV=production
+ENTRYPOINT ["/bin/server"]
+```
+
+## How the copy finds the other stage
+
+`release.copy("/bin/server", stage=builder)` renders as
+`COPY --from=base --link`. Passing `stage=` takes the source stage's name and
+emits `--from=<name>`, and adds `--link` automatically for cross-stage copies.
+
+The first stage here is the default `base`. A top-level `Stage("golang:1.23")`
+is named `base` unless you pass `name=`. The second stage sets `name="release"`.
+
+## Deriving a stage from another
+
+To branch a stage off an existing one rather than a registry image, call
+`stage()` on it:
+
+```python
+with base.stage() as builder:
+    builder.run("make", "all")
+```
+
+The child's name comes from the `as` target, `builder` here, so you rarely pass
+`name=`. See [`Stage.stage`](../reference/) for the details.
+
+## Picking the value at render time
+
+`release.env({"GO_ENV": "production" if ctx.release else "staging"})` reads the
+`release` config field and sets `GO_ENV` accordingly. Render the same recipe
+with `--release=false` to get `ENV GO_ENV=staging`.

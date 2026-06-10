@@ -24,16 +24,20 @@ hero:
   name: docker-dsl
   tagline: "Write Dockerfiles the way you write Python — one recipe, many variants."
 
-# Narrative doc sections are optional — dynamic mode generates the API reference
-# from docstrings without them. Uncomment and point at docs/ dirs as they appear.
-# sections:
-#   - title: Getting Started
-#     dir: docs/getting-started
-#     index: true
-#   - title: Guide
-#     dir: docs/guide
-#     navbar_after: Getting Started
-#     index: true
+# Expands `<!-- gd-embed: name.py -->` markers in narrative pages with the
+# source of examples/name.py — the same recipes the snapshot suite tests, so
+# documented code can't drift from tested code.
+pre_render:
+  - docs/scripts/embed_examples.py
+
+sections:
+  - title: Getting Started
+    dir: docs/getting-started
+    index: true
+  - title: Guide
+    dir: docs/guide
+    navbar_after: Getting Started
+    index: true
 
 # The CLI builds its arguments dynamically per-recipe via argparse (no click
 # group to introspect), so great-docs CLI rendering stays off; the README and
@@ -47,11 +51,68 @@ authors:
     github: yasyf
     email: yasyfm@gmail.com
 
-# Curated symbol reference (public API only). Optional — without it, dynamic
-# mode documents everything in docker_dsl.__all__.
-# reference:
-#   - title: Core
-#     desc: The main entry points.
-#     contents:
-#       - SomePublicClass
-#       - some_public_function
+# Curated reference, grouped by how a recipe is written. Classes outside the
+# top-level __all__ are pulled in by dotted path — griffe resolves those without
+# widening __all__, which must stay at five names (see docker_dsl/__init__.py).
+reference:
+  - title: Entry points
+    desc: Declare config and render a recipe into a Dockerfile.
+    contents:
+      - name: Dockerfile
+        members:
+          - render
+      # BuildContext is the type of the exported `context` object; documenting
+      # the bare name `context` would resolve to the module, not the instance.
+      - name: BuildContext
+        members:
+          - register
+      - rendering
+  - title: Stage authoring
+    desc: Declare stages and emit instructions.
+    contents:
+      - name: Stage
+        members:
+          - arg
+          - env
+          - add_to_path
+          - workdir
+          - copy
+          - entrypoint
+          - cmd
+          - run
+          - cache
+          - secret
+          - bind
+          - stage
+      - name: MountScope
+        members: false
+      - name: EnvScope
+        members: false
+  - title: The run builder
+    desc: Accumulate shell commands into one RUN instruction.
+    contents:
+      # Explicit member list: griffe merges the generated builder.pyi, so a bare
+      # entry would document thousands of shell-command stubs.
+      - name: RunBuilder
+        members:
+          - __call__
+          - echo
+          - cd
+          - curl_bash
+          - install
+          - fetch_file
+      - name: AptMixin
+        members:
+          - apt_install
+          - add_apt_ppa
+          - add_apt_repo
+      - name: RedirectableCmd
+        members: false
+      - name: CdScope
+        members: false
+      - name: CmdInvoker
+        members: false
+  - title: Introspection
+    desc: Query the active build during a render pass.
+    contents:
+      - current_stage

@@ -1,0 +1,37 @@
+---
+title: Reusable helpers
+---
+
+A recipe is plain Python, so factor repeated setup into a function. A
+`@contextmanager` that composes stage scopes drops into a `with` line next to the
+built-in scopes.
+
+## Wrap repeated mounts in a helper
+
+This recipe defines a `cargo` helper that opens two cache mounts, then reuses it
+around the build:
+
+<!-- gd-embed: helpers.py -->
+
+Render it with `--dev=true`:
+
+```dockerfile
+# syntax=docker/dockerfile:1
+FROM rust:1.83-slim AS base
+WORKDIR /app
+COPY . .
+RUN --mount=type=cache,target=/root/.cargo/registry,sharing=shared --mount=type=cache,target=/app/target,sharing=shared \
+  cargo build --release \
+  && cargo test
+```
+
+## How it composes
+
+`cargo(s)` is a context manager that opens `s.cache(...)` twice and yields. In the
+`with cargo(s), s.run() as r:` line it sits alongside `s.run()`, so both cache
+mounts apply to every command in the block. Drop the helper into any stage that
+needs the same caches.
+
+Helpers can take more than a stage, branch on config, or wrap secrets and binds.
+They are ordinary Python. Reach for `current_stage()` when a helper should act on
+whichever stage is open without taking it as an argument.

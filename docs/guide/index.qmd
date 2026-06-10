@@ -1,0 +1,20 @@
+---
+title: Guide
+---
+
+Each page solves one task. Skim for the one you need.
+
+- [Multi-stage builds](multi-stage-builds.qmd) copies artifacts from a build
+  stage into a slim final image.
+- [BuildKit mounts](buildkit-mounts.qmd) scopes cache, secret, and bind mounts
+  to the commands that need them.
+- [Smart apt](smart-apt.qmd) installs packages, PPAs, and third-party repos
+  without hand-writing `apt-get update`.
+- [The run builder](run-builder.qmd) composes one `RUN` from Python, with
+  dynamic commands, directory scoping, and file redirects.
+- [Reusable helpers](reusable-helpers.qmd) factors repeated setup into a
+  context manager.
+- [Render from the CLI](render-from-the-cli.qmd) renders a recipe from the
+  command line or from Python.
+
+If you are new to docker-dsl, start with [Getting Started](../getting-started/).

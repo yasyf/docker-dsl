@@ -1,0 +1,48 @@
+---
+title: BuildKit mounts
+---
+
+Mount a cache, secret, or build-context path for the duration of a `with` block.
+Every `RUN` inside the block picks up the open mounts, and nothing leaks past it.
+
+## Scope mounts to a block
+
+This recipe installs dependencies with a pip cache and a bind-mounted context,
+then adds private packages behind a secret:
+
+<!-- gd-embed: mounts.py -->
+
+Render it with `--private=true`:
+
+```dockerfile
+# syntax=docker/dockerfile:1
+FROM python:3.13-slim AS base
+WORKDIR /app
+RUN --mount=type=bind,source=.,target=/app --mount=type=cache,target=/root/.cache/pip,sharing=shared \
+  pip install --requirement requirements.txt
+RUN --mount=type=secret,id=pypi,target=/root/.netrc --mount=type=cache,target=/root/.cache/pip,sharing=shared \
+  pip install --requirement requirements-private.txt
+```
+
+## The three mount types
+
+- `s.cache(target, lock=False)` mounts a persistent cache that survives between
+  builds. Pass `lock=True` for `sharing=locked` when concurrent builds write the
+  same cache.
+- `s.secret(id, target=...)` mounts a secret supplied at build time with
+  `docker build --secret id=<id>,...`. It never lands in an image layer.
+- `s.bind(source=..., target=...)` mounts a build-context path read-only, for
+  files a command needs without a `COPY`.
+
+## Combining and nesting
+
+List several scopes in one `with` to apply them together, and add `s.run()` last
+to open the builder under all of them:
+
+```python
+with s.cache("/root/.cache/pip"), s.secret("pypi", target="/root/.netrc"), s.run() as r:
+    r.pip("install", "--requirement", "requirements.txt")
+```
+
+The mounts apply only to commands inside the block. A `RUN` outside it carries
+none of them.

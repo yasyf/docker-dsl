@@ -1,0 +1,74 @@
+---
+title: The run builder
+---
+
+`s.run()` as a `with` block gives you a run builder. Each call inside the block
+adds a command, and on exit they join into one `&&`-chained `RUN`.
+
+## Compose a multi-command RUN
+
+This recipe clones a repo, builds it in a subdirectory, and records the result:
+
+<!-- gd-embed: run_builder.py -->
+
+Render it with `--ref=v2.0.0`:
+
+```dockerfile
+# syntax=docker/dockerfile:1
+FROM ubuntu:24.04 AS base
+WORKDIR /src
+RUN git clone https://github.com/example/widget.git . \
+  && git checkout v2.0.0 \
+  && cd build \
+  && cmake .. --build-type Release \
+  && make -j$(nproc) \
+  && make install \
+  && cd - \
+  && echo "widget built" >> /var/log/build.txt \
+  && echo "build complete" > /src/STATUS \
+  && rm -rf /src/build
+```
+
+## Dynamic commands
+
+Any attribute you access becomes a shell binary, so `r.git(...)` emits `git` and
+`r.make(...)` emits `make`. Keyword arguments become flags. `build_type="Release"`
+renders `--build-type Release`, a `True` value renders a bare `--flag`, and
+underscores become hyphens. The shipped `builder.pyi` stub gives editors
+completions for common binaries.
+
+For a command the dispatch can't express, call the builder with a raw string:
+
+```python
+r("rm -rf /src/build")
+```
+
+## Change directory, then return
+
+`r.cd(path)` as a `with` block runs its body in `path` and restores the previous
+directory with `cd -` on exit:
+
+```python
+with r.cd("build"):
+    r.make("install")
+```
+
+Called as a bare statement, `r.cd(path)` changes directory for the rest of the
+`RUN` without restoring it.
+
+## Redirect echo to a file
+
+`r.echo(text)` builds an `echo` you redirect with `>>` to append or `>` to
+truncate, with the path on the right:
+
+```python
+r.echo("widget built") >> "/var/log/build.txt"   # append
+r.echo("build complete") > "/src/STATUS"          # truncate
+```
+
+## Fetch helpers
+
+- `r.curl_bash(url, args=(...))` pipes a remote install script into `bash` over
+  a pinned-TLS curl.
+- `r.install(url, target=..., strip=...)` downloads a tarball and extracts it.
+- `r.fetch_file(url, dest)` downloads one file, creating its parent directory.
