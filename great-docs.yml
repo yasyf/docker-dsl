@@ -1,0 +1,57 @@
+# Great Docs configuration — https://posit-dev.github.io/great-docs/
+# Build: uv run great-docs build · Preview: uv run great-docs preview
+
+module: docker_dsl
+display_name: docker-dsl
+parser: google
+dynamic: true
+repo: https://github.com/yasyf/docker-dsl
+site_url: "https://yasyf.github.io/docker-dsl/"
+pypi: true
+github_style: widget
+jupyter: python3
+
+# Conservative defaults: a solid navbar and a single accent, no gradient
+# presets or hero starfield. The gradient/starfield extras read as busy and the
+# starfield canvas intercepts homepage clicks; keep them off unless asked.
+navbar_color: "#0b2a4a"
+accent_color: "#1d63ed"
+dark_mode_toggle: true
+back_to_top: true
+keyboard_nav: true
+
+hero:
+  name: docker-dsl
+  tagline: "Write Dockerfiles the way you write Python — one recipe, many variants."
+
+# Narrative doc sections are optional — dynamic mode generates the API reference
+# from docstrings without them. Uncomment and point at docs/ dirs as they appear.
+# sections:
+#   - title: Getting Started
+#     dir: docs/getting-started
+#     index: true
+#   - title: Guide
+#     dir: docs/guide
+#     navbar_after: Getting Started
+#     index: true
+
+# The CLI builds its arguments dynamically per-recipe via argparse (no click
+# group to introspect), so great-docs CLI rendering stays off; the README and
+# module docstrings cover usage.
+cli:
+  enabled: false
+
+authors:
+  - name: Yasyf Mohamedali
+    role: Maintainer
+    github: yasyf
+    email: yasyfm@gmail.com
+
+# Curated symbol reference (public API only). Optional — without it, dynamic
+# mode documents everything in docker_dsl.__all__.
+# reference:
+#   - title: Core
+#     desc: The main entry points.
+#     contents:
+#       - SomePublicClass
+#       - some_public_function
