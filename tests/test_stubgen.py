@@ -27,8 +27,17 @@ class TestFilterNames:
             ("True", False),
             ("match", False),
         ],
-        ids=["valid", "dash", "digit-start", "keyword", "underscore",
-             "valid-make", "valid-cmake", "builtin-const", "soft-keyword"],
+        ids=[
+            "valid",
+            "dash",
+            "digit-start",
+            "keyword",
+            "underscore",
+            "valid-make",
+            "valid-cmake",
+            "builtin-const",
+            "soft-keyword",
+        ],
     )
     def test_is_valid_name(self, name: str, expected: bool) -> None:
         assert StubGen.is_valid_name(name) == expected

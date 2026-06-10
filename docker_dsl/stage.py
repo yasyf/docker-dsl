@@ -76,12 +76,14 @@ class Stage:
     ) -> None:
         if not self.active:
             return
-        self.instructions.append(Copy(
-            src=src,
-            dst=dst or src,
-            from_=image if image is not None else (stage.name if stage is not None else from_),
-            link=link if link is not None else (image is not None or stage is not None),
-        ))
+        self.instructions.append(
+            Copy(
+                src=src,
+                dst=dst or src,
+                from_=image if image is not None else (stage.name if stage is not None else from_),
+                link=link if link is not None else (image is not None or stage is not None),
+            )
+        )
 
     def entrypoint(self, *cmd: str) -> None:
         if not self.active:
@@ -100,10 +102,14 @@ class Stage:
     def run(self, *args: str, env: dict[str, str] | None = None) -> RunBuilder | None:
         if args:
             if self.active:
-                self.emit_run(" ".join((
-                    *(f'{k}="{v}"' for k, v in (env or {}).items()),
-                    *args,
-                )))
+                self.emit_run(
+                    " ".join(
+                        (
+                            *(f'{k}="{v}"' for k, v in (env or {}).items()),
+                            *args,
+                        )
+                    )
+                )
             return None
         return RunBuilder(self) if self.active else Noop()  # type: ignore
 

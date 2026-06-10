@@ -53,5 +53,3 @@ class TestInstructions:
 
     def test_cmd_json(self) -> None:
         assert Cmd(args=("python",)).render() == 'CMD ["python"]'
-
-

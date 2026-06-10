@@ -8,8 +8,7 @@ from docker_dsl.mounts import BindMount, CacheMount, SecretMount
 class TestMountRender:
     def test_cache_mount_default_sharing_is_shared(self) -> None:
         assert (
-            CacheMount(target="/root/.cache/uv").render()
-            == "--mount=type=cache,target=/root/.cache/uv,sharing=shared"
+            CacheMount(target="/root/.cache/uv").render() == "--mount=type=cache,target=/root/.cache/uv,sharing=shared"
         )
 
     @pytest.mark.parametrize(

@@ -48,13 +48,17 @@ class Copy(Instruction):
     link: bool = False
 
     def render(self) -> str:
-        return " ".join(p for p in (
-            "COPY",
-            f"--from={self.from_}" if self.from_ is not None else None,
-            "--link" if self.link else None,
-            self.src,
-            self.dst,
-        ) if p)
+        return " ".join(
+            p
+            for p in (
+                "COPY",
+                f"--from={self.from_}" if self.from_ is not None else None,
+                "--link" if self.link else None,
+                self.src,
+                self.dst,
+            )
+            if p
+        )
 
 
 class Run(Instruction):

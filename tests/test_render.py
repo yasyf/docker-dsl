@@ -32,11 +32,7 @@ class TestRender:
         with Dockerfile(mod) as d:
             text = d.render(gpu=False)
         assert text == (
-            "# syntax=docker/dockerfile:1\n"
-            "FROM ubuntu:24.04 AS base\n"
-            "ARG PY=3.13\n"
-            "ENV PY=${PY}\n"
-            "WORKDIR /root\n"
+            "# syntax=docker/dockerfile:1\nFROM ubuntu:24.04 AS base\nARG PY=3.13\nENV PY=${PY}\nWORKDIR /root\n"
         )
 
     def test_gpu_branch(self, tmp_path: Path) -> None:
