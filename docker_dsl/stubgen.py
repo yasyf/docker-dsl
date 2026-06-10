@@ -11,6 +11,14 @@ from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 
+SCRIPT_PATH = Path(__file__).parent / "_completions.sh"
+BUILDER_PATH = Path(__file__).parent / "builder.py"
+APT_PATH = Path(__file__).parent / "apt.py"
+DEFAULT_OUTPUT = Path(__file__).parent / "builder.pyi"
+# These builtins complete live env-var names, which would embed the generating
+# machine's environment — including secret names — into the shipped stub.
+ENV_COMPLETING_BUILTINS = frozenset({"export", "declare"})
+
 
 @dataclass(frozen=True)
 class CommandInfo:
@@ -20,12 +28,6 @@ class CommandInfo:
     @property
     def has_completions(self) -> bool:
         return bool(self.subcommands or self.flags)
-
-
-SCRIPT_PATH = Path(__file__).parent / "_completions.sh"
-BUILDER_PATH = Path(__file__).parent / "builder.py"
-APT_PATH = Path(__file__).parent / "apt.py"
-DEFAULT_OUTPUT = Path(__file__).parent / "builder.pyi"
 
 
 class StubGen:
@@ -45,15 +47,13 @@ class StubGen:
         finally:
             Path(tmp).unlink(missing_ok=True)
         commands = set(data.get("commands", []))
-        # Builtins like `export` and `declare` complete live env-var names
-        # (`FOO=`), which would embed the generating machine's environment —
-        # including secret names — into the shipped stub. Drop them.
         completions = {
             cmd: CommandInfo(
-                subcommands=tuple(sorted(s for s in info["subcommands"] if not s.endswith("="))),
+                subcommands=tuple(sorted(info["subcommands"])),
                 flags=tuple(sorted(info["flags"])),
             )
             for cmd, info in data.get("completions", {}).items()
+            if cmd not in ENV_COMPLETING_BUILTINS
         }
         return commands, completions
 
