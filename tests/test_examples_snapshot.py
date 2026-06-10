@@ -82,3 +82,61 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked --mount=type=cache,t
   && rm -rf /tmp/*
 CMD ["bash"]
 """)
+
+    def test_run_builder_example(self) -> None:
+        assert Dockerfile(importlib.import_module("examples.run_builder")).render(ref="v2.0.0") == snapshot("""\
+# syntax=docker/dockerfile:1
+FROM ubuntu:24.04 AS base
+WORKDIR /src
+RUN git clone https://github.com/example/widget.git . \\
+  && git checkout v2.0.0 \\
+  && cd build \\
+  && cmake .. --build-type Release \\
+  && make -j$(nproc) \\
+  && make install \\
+  && cd - \\
+  && echo "widget built" >> /var/log/build.txt \\
+  && echo "build complete" > /src/STATUS \\
+  && rm -rf /src/build
+""")
+
+    def test_mounts_private(self) -> None:
+        assert Dockerfile(importlib.import_module("examples.mounts")).render(private=True) == snapshot("""\
+# syntax=docker/dockerfile:1
+FROM python:3.13-slim AS base
+WORKDIR /app
+RUN --mount=type=bind,source=.,target=/app --mount=type=cache,target=/root/.cache/pip,sharing=shared \\
+  pip install --requirement requirements.txt
+RUN --mount=type=secret,id=pypi,target=/root/.netrc --mount=type=cache,target=/root/.cache/pip,sharing=shared \\
+  pip install --requirement requirements-private.txt
+""")
+
+    def test_mounts_public(self) -> None:
+        assert Dockerfile(importlib.import_module("examples.mounts")).render(private=False) == snapshot("""\
+# syntax=docker/dockerfile:1
+FROM python:3.13-slim AS base
+WORKDIR /app
+RUN --mount=type=bind,source=.,target=/app --mount=type=cache,target=/root/.cache/pip,sharing=shared \\
+  pip install --requirement requirements.txt
+""")
+
+    def test_helpers_dev(self) -> None:
+        assert Dockerfile(importlib.import_module("examples.helpers")).render(dev=True) == snapshot("""\
+# syntax=docker/dockerfile:1
+FROM rust:1.83-slim AS base
+WORKDIR /app
+COPY . .
+RUN --mount=type=cache,target=/root/.cargo/registry,sharing=shared --mount=type=cache,target=/app/target,sharing=shared \\
+  cargo build --release \\
+  && cargo test
+""")
+
+    def test_helpers_release(self) -> None:
+        assert Dockerfile(importlib.import_module("examples.helpers")).render(dev=False) == snapshot("""\
+# syntax=docker/dockerfile:1
+FROM rust:1.83-slim AS base
+WORKDIR /app
+COPY . .
+RUN --mount=type=cache,target=/root/.cargo/registry,sharing=shared --mount=type=cache,target=/app/target,sharing=shared \\
+  cargo build --release
+""")

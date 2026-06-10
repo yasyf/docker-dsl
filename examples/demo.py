@@ -12,6 +12,9 @@ class Demo:
         ("examples.multi_stage", {"release": False}),
         ("examples.apt_smart", {"with_intel": True}),
         ("examples.apt_smart", {"with_intel": False}),
+        ("examples.run_builder", {"ref": "v2.0.0"}),
+        ("examples.mounts", {"private": True}),
+        ("examples.helpers", {"dev": True}),
     )
 
     @classmethod
