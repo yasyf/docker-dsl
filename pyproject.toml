@@ -1,6 +1,7 @@
 [project]
 name = "docker-dsl"
-version = "0.1.0"
+# Inert sentinel — the real version is set from the release tag (uv version --frozen); never edited by hand.
+version = "0.0.0"
 description = "Imperative context-manager DSL for authoring multi-stage Dockerfiles."
 readme = "README.md"
 license = "MIT"
