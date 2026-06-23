@@ -19,12 +19,6 @@ Run it through [uvx](https://docs.astral.sh/uv/), no install needed:
 uvx docker-dsl --help
 ```
 
-To add it to a project:
-
-```bash
-uv add docker-dsl
-```
-
 ## Quickstart
 
 Write a recipe module, `minimal.py`:
