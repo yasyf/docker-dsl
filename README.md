@@ -1,25 +1,12 @@
-# docker-dsl
+# ![docker-dsl](https://github.com/yasyf/docker-dsl/raw/main/docs/assets/readme-banner.webp)
 
-![docker-dsl banner](https://github.com/yasyf/docker-dsl/raw/main/docs/assets/readme-banner.webp)
+**Delete your Dockerfile.gpu.** docker-dsl renders both GPU and CPU Dockerfiles from one Python recipe, where a flag flips the variant and `run()` collapses each chain into a single RUN.
 
-[![PyPI](https://img.shields.io/pypi/v/docker-dsl.svg)](https://pypi.org/project/docker-dsl/)
-[![Python](https://img.shields.io/pypi/pyversions/docker-dsl.svg)](https://pypi.org/project/docker-dsl/)
-[![Docs](https://img.shields.io/github/actions/workflow/status/yasyf/docker-dsl/docs.yml?branch=main&label=docs)](https://yasyf.github.io/docker-dsl/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/yasyf/docker-dsl/blob/main/LICENSE)
+[![CI](https://github.com/yasyf/docker-dsl/actions/workflows/ci.yml/badge.svg)](https://github.com/yasyf/docker-dsl/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/docker-dsl)](https://pypi.org/project/docker-dsl/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](https://github.com/yasyf/docker-dsl/blob/main/LICENSE)
 
-An imperative, context-manager-based Python DSL for authoring multi-stage
-Dockerfiles. Write builds with `with` blocks, conditionals, comprehensions, and
-reusable helpers, then render one recipe into many Dockerfile variants.
-
-## Install
-
-Run it through [uvx](https://docs.astral.sh/uv/), no install needed:
-
-```bash
-uvx docker-dsl --help
-```
-
-## Quickstart
+## Get started
 
 Write a recipe module, `minimal.py`:
 
@@ -43,40 +30,87 @@ Render it:
 uvx docker-dsl minimal --tag=v1.0.0 --out Dockerfile
 ```
 
-`Dockerfile` now holds:
+<img src="https://github.com/yasyf/docker-dsl/raw/main/docs/assets/demo.png" alt="Terminal running 'uvx docker-dsl minimal --tag=v1.0.0 --out Dockerfile' — cat Dockerfile shows the rendered Dockerfile" width="700">
 
-```dockerfile
-# syntax=docker/dockerfile:1
-FROM ubuntu:24.04 AS base
-ARG APP_TAG=v1.0.0
-ENV APP_TAG=${APP_TAG}
-WORKDIR /app
-RUN echo "hello from docker-dsl" > /app/greeting.txt
-CMD ["cat", "/app/greeting.txt"]
+Driving with an agent? Paste this:
+
+```text
+Install docker-dsl in this repo with `uv add docker-dsl`.
+Port my existing Dockerfile to a recipe module: one Stage per build stage, run() blocks for RUN chains, cache mounts on the apt/pip steps.
+Render it with `uvx docker-dsl <module.path> --out Dockerfile` and diff against the original.
+Docs: https://yasyf.github.io/docker-dsl/
 ```
 
-Change `--tag` and render again for a different Dockerfile from the same recipe.
+---
 
-## Why
+## Use cases
 
-- **`RUN` chains glued with `&&` are fragile.** The run builder accumulates
-  commands in Python and emits one correct `RUN`, with `cd` scoping restored for
-  you.
-- **Variants drift apart.** One recipe takes `--gpu=true|false` and renders both
-  a GPU and a CPU image from the same code path, instead of two Dockerfiles that
-  diverge over time.
-- **BuildKit mounts are easy to get wrong.** `cache`, `secret`, and `bind` are
-  scoped context managers, so every `RUN` inside the block picks them up and
-  nothing leaks out.
+### Ship GPU and CPU images from one recipe
 
-## Docs
+Your `Dockerfile.gpu` started life as a copy of your `Dockerfile`, and the two have drifted ever since. Register a bool and branch in Python instead:
 
-The [documentation](https://yasyf.github.io/docker-dsl/) has a
-[tutorial](https://yasyf.github.io/docker-dsl/getting-started/), task-focused
-[guides](https://yasyf.github.io/docker-dsl/guide/) (multi-stage builds, mounts,
-smart apt, the run builder, reusable helpers, and the CLI), and the full API
-[reference](https://yasyf.github.io/docker-dsl/reference/).
+```python
+ctx.register("gpu", bool)
 
-## License
+base = "nvidia/cuda:12.4.1-runtime-ubuntu22.04" if ctx.gpu else "ubuntu:24.04"
+```
 
-This project is licensed under the MIT License; see [LICENSE](LICENSE).
+```bash
+uvx docker-dsl train --gpu=true --out Dockerfile.gpu
+uvx docker-dsl train --gpu=false --out Dockerfile
+```
+
+Both files render from the same recipe: the GPU variant gets the CUDA base image and `pip install torch`, the CPU variant gets `ubuntu:24.04` and the CPU wheel index, and the diff between them is a Python `if` you can read.
+
+### Turn a 10-command build into one correct RUN
+
+A long `RUN` chain means a `&&` and a trailing backslash on every line, and a `cd` that silently leaks into the rest of the chain. Write the commands as method calls — `r.cd()` scopes the directory change:
+
+```bash
+uvx docker-dsl run_builder --ref=v2.0.0
+```
+
+<details>
+<summary>The nine calls in <code>run_builder.py</code> emit one RUN</summary>
+
+```dockerfile
+RUN git clone https://github.com/example/widget.git . \
+  && git checkout v2.0.0 \
+  && cd build \
+  && cmake .. --build-type Release \
+  && make -j$(nproc) \
+  && make install \
+  && cd - \
+  && echo "widget built" >> /var/log/build.txt \
+  && echo "build complete" > /src/STATUS \
+  && rm -rf /src/build
+```
+
+</details>
+
+### Keep secrets and caches scoped to the RUNs that need them
+
+A BuildKit `--mount` flag lives on one `RUN` instruction, so refactoring the chain means re-plumbing every mount by hand. In a recipe, `cache`, `secret`, and `bind` are context managers — every `run()` inside the block picks them up, and nothing leaks past it:
+
+```bash
+uvx docker-dsl mounts --private=true
+```
+
+```dockerfile
+RUN --mount=type=secret,id=pypi,target=/root/.netrc --mount=type=cache,target=/root/.cache/pip,sharing=shared \
+  pip install --requirement requirements-private.txt
+```
+
+Render with `--private=false` and the secret-mounted `RUN` disappears entirely — the `.netrc` never touches the public variant.
+
+## More in the docs
+
+- **Multi-stage builds** — build in one stage, `copy(..., stage=builder)` the artifact into a slim final image — [guide](https://yasyf.github.io/docker-dsl/docs/guide/multi-stage-builds.html)
+- **Smart apt** — `apt_install` inserts `apt-get update` exactly where package lists change, PPAs and third-party repos included — [guide](https://yasyf.github.io/docker-dsl/docs/guide/smart-apt.html)
+- **The run builder** — any shell command as a method call, with redirects and directory scoping — [guide](https://yasyf.github.io/docker-dsl/docs/guide/run-builder.html)
+- **Reusable helpers** — factor repeated setup into plain Python context managers — [guide](https://yasyf.github.io/docker-dsl/docs/guide/reusable-helpers.html)
+- **Render from the CLI or from Python** — every recipe gets typed `--flag`s for free — [guide](https://yasyf.github.io/docker-dsl/docs/guide/render-from-the-cli.html)
+
+Status: alpha — the DSL surface may still shift before 1.0.
+
+Read the [docs](https://yasyf.github.io/docker-dsl/) for the full guide. Licensed under [MIT](LICENSE).

@@ -2,7 +2,7 @@
 name = "docker-dsl"
 # Inert sentinel — the real version is set from the release tag (uv version --frozen); never edited by hand.
 version = "0.0.0"
-description = "Imperative context-manager DSL for authoring multi-stage Dockerfiles."
+description = "Delete your Dockerfile.gpu."
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]

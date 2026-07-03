@@ -1,11 +1,23 @@
 ---
-title: Write your first recipe
+title: Write your first recipe in under five minutes
 ---
 
-By the end of this page you have a recipe module and a Dockerfile rendered from
-it. The recipe greets a build argument and prints it at runtime.
+By the end of this page, a ten-line Python module renders this Dockerfile:
 
-## Write the recipe
+```dockerfile
+# syntax=docker/dockerfile:1
+FROM ubuntu:24.04 AS base
+ARG APP_TAG=v1.0.0
+ENV APP_TAG=${APP_TAG}
+WORKDIR /app
+RUN echo "hello from docker-dsl" > /app/greeting.txt
+CMD ["cat", "/app/greeting.txt"]
+```
+
+The recipe greets a build argument and prints it at runtime, and the `ARG`
+value comes from a CLI flag — change the flag, get a different Dockerfile.
+
+## 1. Write the recipe
 
 Create `minimal.py`:
 
@@ -20,7 +32,7 @@ Three things happen in that file:
 - `s.arg(..., env=True)` writes both an `ARG` and an `ENV`, so the value is
   available at build time and runtime.
 
-## Render it
+## 2. Render it
 
 Run the recipe through the CLI, passing the `tag` field:
 
@@ -28,17 +40,11 @@ Run the recipe through the CLI, passing the `tag` field:
 uvx docker-dsl minimal --tag=v1.0.0 --out Dockerfile
 ```
 
-`Dockerfile` now holds:
-
-```dockerfile
-# syntax=docker/dockerfile:1
-FROM ubuntu:24.04 AS base
-ARG APP_TAG=v1.0.0
-ENV APP_TAG=${APP_TAG}
-WORKDIR /app
-RUN echo "hello from docker-dsl" > /app/greeting.txt
-CMD ["cat", "/app/greeting.txt"]
-```
+::: {.callout-tip title="Checkpoint"}
+`Dockerfile` in your working directory now matches the output at the top of
+this page. A `ModuleNotFoundError` means the recipe isn't in your working
+directory — run the command from the directory holding `minimal.py`.
+:::
 
 Omit `--out` to print to stdout instead. Change `--tag` and render again to get a
 different Dockerfile from the same recipe.

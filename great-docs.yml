@@ -22,7 +22,7 @@ keyboard_nav: true
 
 hero:
   name: docker-dsl
-  tagline: "Write Dockerfiles the way you write Python — one recipe, many variants."
+  tagline: "Delete your Dockerfile.gpu."
 
 # Expands `<!-- gd-embed: name.py -->` markers in narrative pages with the
 # source of examples/name.py — the same recipes the snapshot suite tests, so
