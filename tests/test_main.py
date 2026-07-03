@@ -63,6 +63,26 @@ class TestCLI:
         assert result.returncode == 0, result.stderr
         assert "FROM gpu-image AS base" in result.stdout
 
+    def test_imports_recipe_from_cwd(self, tmp_path: Path) -> None:
+        # Mirrors the console script: -P keeps cwd off sys.path at startup,
+        # so the import only works via Main.run's explicit cwd insert.
+        source = (
+            "from docker_dsl import Stage, context as ctx\n"
+            "ctx.register('gpu', bool)\n"
+            "with Stage('ubuntu:24.04') as s:\n"
+            "    s.workdir('/root')\n"
+        )
+        self.write_recipe(tmp_path, "recipe_cli_cwd", source)
+        result = subprocess.run(
+            [sys.executable, "-P", "-m", "docker_dsl", "recipe_cli_cwd", "--gpu=false"],
+            capture_output=True,
+            text=True,
+            cwd=tmp_path,
+            check=False,
+        )
+        assert result.returncode == 0, result.stderr
+        assert "FROM ubuntu:24.04 AS base" in result.stdout
+
     def test_missing_required_flag_errors(self, tmp_path: Path) -> None:
         source = (
             "from docker_dsl import Stage, context as ctx\n"

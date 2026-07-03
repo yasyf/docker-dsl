@@ -35,6 +35,10 @@ class Main:
         if not args:
             raise SystemExit(usage)
         module_path, *rest = args
+        # The console script does not put the working directory on sys.path
+        # (unlike `python -m`), so add it: recipes live in the caller's cwd.
+        if (cwd := str(Path.cwd())) not in sys.path:
+            sys.path.insert(0, cwd)
         module = importlib.import_module(module_path)
         schema = Registry.get(module)
 
