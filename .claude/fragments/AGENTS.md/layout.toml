@@ -1,0 +1,5 @@
+fragments = [
+  "docker-dsl-development-guide",
+  "cc-skills:ccx",
+  "python-style",
+]
