@@ -22,6 +22,7 @@ accent_color:
 # Open Graph / social preview image, resolved relative to the project root.
 social_cards:
   image: docs/assets/social-preview.jpg
+  twitter_site: "@yasyf"
 
 hero:
   name: docker-dsl
