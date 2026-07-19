@@ -13,7 +13,15 @@ pypi: true
 # presets or hero starfield. The gradient/starfield extras read as busy and the
 # starfield canvas intercepts homepage clicks; keep them off unless asked.
 navbar_color: "#0b2a4a"
-accent_color: "#1d63ed"
+# Split accent: light #1d63ed clears WCAG AA on light chrome (5.17:1) but only
+# hits 3.36:1 on dark, so dark uses a lighter #6ba3ff (6.89:1).
+accent_color:
+  light: "#1d63ed"
+  dark: "#6ba3ff"
+
+# Open Graph / social preview image, resolved relative to the project root.
+social_cards:
+  image: docs/assets/social-preview.jpg
 
 hero:
   name: docker-dsl
